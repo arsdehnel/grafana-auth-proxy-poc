@@ -91,7 +91,7 @@ function clearCookie(res, name) {
 // Each pod warms its own cache independently.
 // ---------------------------------------------------------------------------
 const syncCache = new Map()
-const SYNC_TTL_MS = 30000;//15 * 60 * 1000
+const SYNC_TTL_MS = 15 * 60 * 1000
 
 // ---------------------------------------------------------------------------
 // Mock appRoles - in prod this comes directly from Ping userinfo.
@@ -281,11 +281,34 @@ async function syncUserTeams(username, appRoles) {
     console.log(`[sync] Sync complete for "${username}", cache set for ${SYNC_TTL_MS / 1000}s`)
 }
 
+// ---------------------------------------------------------------------------
+// Role mapping
+// GRAFANA_ADMIN_GROUPS and GRAFANA_VIEWER_GROUPS are comma-separated lists
+// of appRoles values that grant Admin or Viewer access respectively.
+// Users not in either list are denied access.
+// ---------------------------------------------------------------------------
+const ADMIN_GROUPS = (process.env.GRAFANA_ADMIN_GROUPS || '').split(',').map(s => s.trim()).filter(Boolean)
+const VIEWER_GROUPS = (process.env.GRAFANA_VIEWER_GROUPS || '').split(',').map(s => s.trim()).filter(Boolean)
+
+console.log(`[startup] GRAFANA_ADMIN_GROUPS:  ${ADMIN_GROUPS.join(', ') || '(none)'}`)
+console.log(`[startup] GRAFANA_VIEWER_GROUPS: ${VIEWER_GROUPS.join(', ') || '(none)'}`)
+
+if (!ADMIN_GROUPS.length && !VIEWER_GROUPS.length) {
+    console.error(`[startup] FATAL: At least one of GRAFANA_ADMIN_GROUPS or GRAFANA_VIEWER_GROUPS must be set`)
+    process.exit(1)
+}
+
 function getRoleFromAppRoles(appRoles) {
-    // TODO: update role mapping rules for prod AD group names
-    const role = 'Viewer'
-    console.log(`[auth] Resolved Grafana role: ${role}`)
-    return role
+    if (ADMIN_GROUPS.some(g => appRoles.includes(g))) {
+        console.log(`[auth] Resolved Grafana role: Admin`)
+        return 'Admin'
+    }
+    if (VIEWER_GROUPS.some(g => appRoles.includes(g))) {
+        console.log(`[auth] Resolved Grafana role: Viewer`)
+        return 'Viewer'
+    }
+    console.log(`[auth] User is not in any authorized group — access denied`)
+    return null
 }
 
 // ---------------------------------------------------------------------------
@@ -469,6 +492,11 @@ app.get('/callback', async (req, res) => {
         }
 
         const role = getRoleFromAppRoles(appRoles)
+        if (!role) {
+            console.warn(`[auth] Access denied for "${username}" — not in any authorized group`)
+            clearCookie(res, 'ts_oidc')
+            return res.status(403).send('Access denied. You are not authorized to access Grafana.')
+        }
         const user = {
             username,
             name: userinfo.name || username,
