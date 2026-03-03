@@ -1,0 +1,39 @@
+issuer: http://localhost:8080/dex
+
+storage:
+  type: memory # fine for local dev, no persistence needed
+
+web:
+  http: 0.0.0.0:5556
+
+oauth2:
+  skipApprovalScreen: true
+
+staticClients:
+  - id: grafana-proxy
+    redirectURIs:
+      - http://localhost:8080/callback
+    name: Grafana Proxy
+    secret: supersecret
+
+# Static users - mimicking what you'd get from Ping
+staticPasswords:
+  - email: adehnel@example.com
+    # bcrypt of "password" - use `htpasswd -bnBC 10 "" password | tr -d ':\n'` to generate
+    hash: "$2y$10$jOxo0Px/64X6kq6MMmOGke1B4xB53/8eLB.JtCQYCZvO5RIphP67S"
+    username: adehnel
+    userID: "adehnel-001"
+
+  - email: jsmith@example.com
+    hash: "$2y$10$jOxo0Px/64X6kq6MMmOGke1B4xB53/8eLB.JtCQYCZvO5RIphP67S"
+    username: jsmith
+    userID: "jsmith-001"
+
+# This is the key part - mapping users to groups that mimic your appRoles
+# Dex doesn't natively do per-user custom claims in staticPasswords,
+# so we use connector groups or the userID to drive this in the sync service
+# See notes in team-sync app for how to handle this
+
+connectors: [] # No external connectors needed locally
+
+enablePasswordDB: true
