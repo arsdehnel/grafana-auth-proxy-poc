@@ -30,6 +30,8 @@ services:
       - SESSION_SECRET=localdevsecret
       - PORT=3001
       - GRAFANA_API_AUTH=admin:admin
+      - ENSURE_TEAMS=true
+      - COOKIE_SECRET=some-long-random-string-here      
     depends_on:
       - dex
       - grafana
@@ -58,6 +60,7 @@ services:
       - GF_AUTH_PROXY_AUTO_SIGN_UP=true
       - GF_AUTH_PROXY_SYNC_TTL=60
       - GF_AUTH_PROXY_HEADERS=Name:X-WEBAUTH-NAME Email:X-WEBAUTH-EMAIL Role:X-WEBAUTH-ROLE
+      # - GF_AUTH_PROXY_ENABLE_LOGIN_TOKEN=true
       # Only trust headers from nginx container
       # - GF_AUTH_PROXY_WHITELIST=172.0.0.0/8
       # Disable the built-in login UI so users can't bypass the proxy
