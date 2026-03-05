@@ -12,13 +12,13 @@ services:
 
   # Your Node.js team sync + auth proxy service
   team-sync:
-    build: ./team-sync
-    volumes:
-      - ./team-sync:/app
-      - /team-sync/node_modules  # prevent host from overwriting container's node_modules
-      - ./sessions:/app/sessions # keep sessions after the team sync restarts
-    command: npx nodemon index.js
+    build: 
+      context: ./team-sync
+      target: dev
     container_name: team-sync
+    command: npm run dev
+    volumes:
+      - ./team-sync/src:/app/src   # only mount source, not the whole directory
     environment:
       - OIDC_ISSUER_INTERNAL=http://dex:5556/dex    # for server-to-server (token validation)
       - OIDC_ISSUER_EXTERNAL=http://localhost:8080/dex  # what goes in the browser redirect URL
@@ -34,6 +34,8 @@ services:
       - COOKIE_SECRET=some-long-random-string-here      
       - GRAFANA_ADMIN_GROUPS=sre-owners-np
       - GRAFANA_VIEWER_GROUPS=sales-viewers-np      
+      - LOG_LEVEL=debug
+      - NODE_ENV=development
     depends_on:
       - dex
       - grafana
